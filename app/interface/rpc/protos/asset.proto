@@ -1,0 +1,15 @@
+syntax = "proto3";
+package protos;
+
+
+service Asset {
+  rpc GetAssetChanges (AssetRequest) returns (stream AssetResponse) {}
+}
+message AssetRequest {
+  string name = 1;
+  string aggregate1 = 2;
+  string aggregate2 = 3;
+}
+message AssetResponse {
+  int32 numberOfAssets = 1;
+}
