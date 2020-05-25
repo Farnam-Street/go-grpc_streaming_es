@@ -38,9 +38,10 @@ func (s server) GetAssetChanges(in *pb.AssetRequest, assetServer pb.Asset_GetAss
 		}
 		fmt.Println(startTimeStamp, endTimeStamp)
 		searchSource := elastic.NewSearchSource()
-		fmt.Println("Printing query info for: ", searchValue)
-		//searchSource.Query(elastic.NewMatchQuery("Name", searchValue))
-		searchSource.Query(elastic.NewRangeQuery("timestamp").From(int(startTimeStamp)).To(int(endTimeStamp)))
+		assetTypeQuery := elastic.NewMatchQuery("Name", searchValue)
+		timeRangeQuery := elastic.NewRangeQuery("timestamp").From(int(startTimeStamp)).To(int(endTimeStamp))
+		finalQuery := elastic.NewBoolQuery().Should().Filter(assetTypeQuery).Filter(timeRangeQuery)
+		searchSource.Query(finalQuery)
 		searchService := client.Search().Index("asset").SearchSource(searchSource)
 		searchResult, err := searchService.Do(ctx)
 		if err != nil {
