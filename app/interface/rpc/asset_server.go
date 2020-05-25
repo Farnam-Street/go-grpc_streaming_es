@@ -8,6 +8,7 @@ import (
 	pb "grpc_es_streaming/app/interface/rpc/protos"
 	"log"
 	"net"
+	"time"
 )
 const (
 	grpcPort = ":50051"
@@ -26,25 +27,37 @@ func (s server) GetAssetChanges(in *pb.AssetRequest, assetServer pb.Asset_GetAss
 	fmt.Println("ES initialized...")
 	log.Println("start new server")
 	ctx := assetServer.Context()
+	currentTimeStamp := time.Now().Unix()
+	startTimeStamp := 0
+	endTimeStamp := currentTimeStamp
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
+		fmt.Println(startTimeStamp, endTimeStamp)
 		searchSource := elastic.NewSearchSource()
-		searchSource.Query(elastic.NewMatchQuery("Name", searchValue))
+		fmt.Println("Printing query info for: ", searchValue)
+		//searchSource.Query(elastic.NewMatchQuery("Name", searchValue))
+		searchSource.Query(elastic.NewRangeQuery("timestamp").From(int(startTimeStamp)).To(int(endTimeStamp)))
 		searchService := client.Search().Index("asset").SearchSource(searchSource)
 		searchResult, err := searchService.Do(ctx)
 		if err != nil {
 			fmt.Println("[ProductsES][GetPIds]Error=", err)
 		}
-
-		resp := pb.AssetResponse{NumberOfAssets: int32(searchResult.TotalHits())}
-		if err := assetServer.Send(&resp); err != nil {
-			log.Printf("send error %v", err)
+		totalResults := int32(searchResult.TotalHits())
+		if totalResults > 0 {
+			resp := pb.AssetResponse{NumberOfAssets: totalResults}
+			if err := assetServer.Send(&resp); err != nil {
+				log.Printf("send error %v", err)
+			}
+			startTimeStamp = int(endTimeStamp)
 		}
 		log.Printf("send new assetResponse=%d", 1)
+		time.Sleep(30 * time.Second)
+
+		endTimeStamp = time.Now().Unix()
 	}
 }
 func main() {
